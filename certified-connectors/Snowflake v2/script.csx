@@ -136,6 +136,7 @@ public class Script : ScriptBase
             var rows = JArray.Parse(contentAsJson[Attr_Data].ToString());
 
             JArray newRows = new JArray();
+            JToken tokenNull = JValue.CreateNull();
 
             foreach (var row in rows)
             {
@@ -148,10 +149,9 @@ public class Script : ScriptBase
                     string type = col[Attr_Column_Type].ToString();
                     if (newRow.ContainsKey(name)) name = name + "_" + Convert.ToString(i);
                     JToken token = row[i];
-                    JToken tokenNull = JValue.CreateNull();
-                    if (token == null || Convert.ToString(token) == "null")
+                    if (token.Type == JTokenType.Null || token == null || Convert.ToString(token) == "null")
                     {
-                        newRow.Add(new JProperty(name.ToString(), row[i]));
+                        newRow.Add(new JProperty(name.ToString(), tokenNull));
                     }
                     else
                     {
