@@ -440,6 +440,15 @@
             "description": "If nullable is false, null values will be replaced by string"
           },
           {
+            "name": "fetchAllPartitions",
+            "in": "query",
+            "type": "boolean",
+            "default": false,
+            "x-ms-visibility": "advanced",
+            "x-ms-summary": "nullable",
+            "description": "If true, return all partitions instead of just the first one."
+          },
+          {
             "name": "body",
             "in": "body",
             "required": true,
