@@ -445,7 +445,7 @@
             "type": "boolean",
             "default": false,
             "x-ms-visibility": "advanced",
-            "x-ms-summary": "nullable",
+            "x-ms-summary": "fetchAllPartitions",
             "description": "If true, return all partitions instead of just the first one."
           },
           {
@@ -980,6 +980,15 @@
             "type": "integer",
             "description": "partition",
             "x-ms-summary": "partition"
+          },
+          {
+            "name": "fetchAllPartitions",
+            "in": "query",
+            "type": "boolean",
+            "default": false,
+            "x-ms-visibility": "advanced",
+            "x-ms-summary": "fetchAllPartitions",
+            "description": "If true, return all partitions instead of just the first one."
           },
           {
             "name": "body",

@@ -48,7 +48,7 @@ public class Script : ScriptBase
     {
         try
         {
-            
+            Context.Logger.LogDebug($"Context.Request.RequestUri: {Context.Request.RequestUri}");
             var originalContent = await Context.Request.Content.ReadAsStringAsync().ConfigureAwait(false);
 
             if (Context.OperationId == OP_CONVERT)
@@ -91,9 +91,12 @@ public class Script : ScriptBase
                     for (var i = 1; i < converted.Response.Partitions.Count(); i++)
                     {
                         SetQueryStringParam(QueryString_Partition, $"{i}");
+
+                        Context.Logger.LogDebug($"Context.Request.RequestUri: {Context.Request.RequestUri}");
+
                         response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
                         responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var partitionResult = ConvertToObjects(responseContent, Context.OperationId);
+                        var partitionResult = ConvertToObjects(responseContent, Context.OperationId, originalContent);
                         foreach (var item in partitionResult.Response.Data)
                         {
                             converted.Response.Data.Add(item);
@@ -137,7 +140,14 @@ public class Script : ScriptBase
         parms[paramName] = value;
 
         //Context.Request.RequestUri.Query = parms.ToString();
-        Context.Request.RequestUri = new Uri(Context.Request.RequestUri.AbsolutePath + parms.ToString());
+        Context.Logger.LogDebug($"Context.Request.RequestUri.Authority + \"://\" + Context.Request.RequestUri.AbsolutePath + parms.ToString(): {Context.Request.RequestUri.Scheme}://{Context.Request.RequestUri.Authority}{Context.Request.RequestUri.AbsolutePath}{RenderDictionaryAsQueryString(parms)}");
+        Context.Request.RequestUri = new Uri($"{Context.Request.RequestUri.Scheme}://{Context.Request.RequestUri.Authority}{Context.Request.RequestUri.AbsolutePath}{RenderDictionaryAsQueryString(parms)}");
+    }
+
+    private string RenderDictionaryAsQueryString(Dictionary<string, string> kvp)
+    {
+        var formattedKvp = kvp.Select(x => $"{x.Key}={x.Value}");
+        return $"?{string.Join("&", formattedKvp)}";
     }
 
     private bool IsUrlValid(string url)
