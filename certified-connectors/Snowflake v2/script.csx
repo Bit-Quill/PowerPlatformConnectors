@@ -94,6 +94,9 @@ public class Script : ScriptBase
 
                         Context.Logger.LogDebug($"Context.Request.RequestUri: {Context.Request.RequestUri}");
 
+                        throw new NotImplementedException(@"This problem here is not inherent to connectors, but the fact that we should probably not be hijacking the original request to fetch subsequent partitions. 
+                            Should proabably create a separate request object per iteration (esp if we're switching the endpoint to GetResult which is more appropriate for any use case that wants to fetch subsequent partitions
+                            all in one go.");
                         response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
                         responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                         var partitionResult = ConvertToObjects(responseContent, Context.OperationId, originalContent);
