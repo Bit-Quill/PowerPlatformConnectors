@@ -163,13 +163,18 @@ public class Script : ScriptBase
                         debug_request.Method = HttpMethod.Get;
                         debug_request.RequestUri = new Uri($"https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016/?partition={i}");            
                         //Context.Logger.LogDebug($"debug_request:{JsonConvert.SerializeObject(debug_request)}");
+                        Context.Logger.LogDebug($"MANUAL_DEBUG: Line 166");
                         var debug_response = await Context.SendAsync(debug_request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+                        Context.Logger.LogDebug($"MANUAL_DEBUG: Line 168");
                         var debug_ResponseContent = await debug_response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        Context.Logger.LogDebug($"MANUAL_DEBUG: Line 170");
                         var partitionResult = ConvertToObjects(debug_ResponseContent, Context.OperationId, originalContent);
-
+                        Context.Logger.LogDebug($"MANUAL_DEBUG: Line 172");
                         foreach (var item in partitionResult.Response.Data)
                         {
+                            Context.Logger.LogDebug($"MANUAL_DEBUG: Line 175");
                             converted.Response.Data.Add(item);
+                            Context.Logger.LogDebug($"MANUAL_DEBUG: Line 77");
                         }
                     }
                 }
@@ -183,7 +188,8 @@ public class Script : ScriptBase
         }
         catch(Exception ex)
         {
-            Context.Logger.LogError(ex.ToString(), ex);
+            Context.Logger.LogError("An uncaught exception has occurred");
+            //Context.Logger.LogError(ex.ToString(), ex);
             throw;
         }
     }
