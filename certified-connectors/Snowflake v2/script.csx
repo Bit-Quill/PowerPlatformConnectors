@@ -44,6 +44,35 @@ public class Script : ScriptBase
         return ConvertToObjects(content, operationId, content).GetAsResponse();
     }
 
+    public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage req)
+    {
+        HttpRequestMessage clone = new HttpRequestMessage(req.Method, req.RequestUri);
+
+        // Copy the request's content (via a MemoryStream) into the cloned object
+        var ms = new MemoryStream();
+        if (req.Content != null)
+        {
+            await req.Content.CopyToAsync(ms).ConfigureAwait(false);
+            ms.Position = 0;
+            clone.Content = new StreamContent(ms);
+
+            // Copy the content headers
+            foreach (var h in req.Content.Headers)
+                clone.Content.Headers.Add(h.Key, h.Value);
+        }
+
+
+        clone.Version = req.Version;
+
+        // foreach (KeyValuePair<string, object?> option in req.Options)
+        //     clone.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);
+
+        foreach (KeyValuePair<string, IEnumerable<string>> header in req.Headers)
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+
+        return clone;
+    }
+
     public override async Task<HttpResponseMessage> ExecuteAsync()
     {
         try
@@ -77,7 +106,35 @@ public class Script : ScriptBase
             {
                 Context.Request.Method = HttpMethod.Get;
             }
-            HttpResponseMessage response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+
+            // This breaks due to null ref exception. I tried hoisting this above the original location below in case the initial SendAsync was the cause, but it's not.
+            // It's something about how the new request isn't quite right even tho we tried to deep copy it.
+            // var debug_request = await CloneHttpRequestMessageAsync(Context.Request);//"https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016?partition=1");
+            // debug_request.RequestUri = new Uri("https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016/?partition=1");            
+            // Context.Logger.LogDebug($"debug_request:{JsonConvert.SerializeObject(debug_request)}");
+            // var debug_response = await Context.SendAsync(debug_request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+            // var debug_ResponseContent = await debug_response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            //// This works. But b/c you've consumed the original request (can only be ran once) the code below then fails, which is okay.
+            //// The real question is how do you construct a new request that is identical to the old one such that you can actually make more snowflake requests.
+            // Context.Request.RequestUri = new Uri("https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016?partition=1");            
+            // var debug_response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+            // var debug_ResponseContent = await debug_response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            // // this works, just as a baseline test.
+            // var debug_request = new HttpRequestMessage(HttpMethod.Get, "https://google.com");
+            // var debug_response = await Context.SendAsync(debug_request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false); //client.Send(debug_request);
+
+            // // Does not work. You can't deserialize an httpresponse b/c there are a bunch of read-only fields that the serializer can't assign values to.
+            // var debug_request = JsonConvert.DeserializeObject<HttpRequestMessage>(JsonConvert.SerializeObject(Context.Request));
+            // debug_request.RequestUri = new Uri("https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016/?partition=1");
+            // var debug_response = await Context.SendAsync(debug_request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+            // //var debug_ResponseContent = await debug_response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            // Context.Logger.LogDebug($"debug_response:{JsonConvert.SerializeObject(debug_response)}");
+
+            //Context.Logger.LogDebug($"Context.Request:{JsonConvert.SerializeObject(Context.Request)}");
+            var request = await CloneHttpRequestMessageAsync(Context.Request);
+            HttpResponseMessage response = await Context.SendAsync(request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
 
             if (response.IsSuccessStatusCode && IsTransformable())
             {
@@ -87,19 +144,29 @@ public class Script : ScriptBase
                 // if this parameter is set in PowerApps then fetch all partitions, instead of making them page manually.
                 if (GetQueryStringParam(QueryString_FetchAllPartitions) == "true")
                 {
+                    var ogContentAsJson = JObject.Parse(originalContent);
+                    //Context.Logger.LogDebug($"originalContent:{originalContent}");
+                    Context.Logger.LogDebug($"originalContent[\"StatementHandle\"]:{ogContentAsJson["StatementHandle"]}");
+                    Context.Logger.LogDebug($"converted.Response.Metadata.StatementHandle:{converted.Response.Metadata.StatementHandle}");
+                    var statementHandle = Context.OperationId == OP_GET_RESULTS ? ogContentAsJson["StatementHandle"] : converted.Response.Metadata.StatementHandle;
                     // yes, this starts at 1 because we've already fetched the first partition.
                     for (var i = 1; i < converted.Response.Partitions.Count(); i++)
                     {
-                        SetQueryStringParam(QueryString_Partition, $"{i}");
+                        // var uri = Context.Request.RequestUri;
+                        // var builder = new UriBuilder(uri.Scheme, uri.Host, uri.Port, $"/api/v2/statements/{statementHandle}", $"?partition={i}");
+                        // Context.Logger.LogDebug($"builder.Uri.ToString(): {builder.Uri.ToString()}");
+                        // var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri.ToString());
+                        
+                        // response = await Context.SendAsync(request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+                        // responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var debug_request = await CloneHttpRequestMessageAsync(Context.Request);//"https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016?partition=1");
+                        debug_request.Method = HttpMethod.Get;
+                        debug_request.RequestUri = new Uri($"https://yca75196.east-us-2.azure.snowflakecomputing.com/api/v2/statements/01b6a856-0000-65f8-0020-ae030003e016/?partition={i}");            
+                        //Context.Logger.LogDebug($"debug_request:{JsonConvert.SerializeObject(debug_request)}");
+                        var debug_response = await Context.SendAsync(debug_request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+                        var debug_ResponseContent = await debug_response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var partitionResult = ConvertToObjects(debug_ResponseContent, Context.OperationId, originalContent);
 
-                        Context.Logger.LogDebug($"Context.Request.RequestUri: {Context.Request.RequestUri}");
-
-                        throw new NotImplementedException(@"This problem here is not inherent to connectors, but the fact that we should probably not be hijacking the original request to fetch subsequent partitions. 
-                            Should proabably create a separate request object per iteration (esp if we're switching the endpoint to GetResult which is more appropriate for any use case that wants to fetch subsequent partitions
-                            all in one go.");
-                        response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
-                        responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var partitionResult = ConvertToObjects(responseContent, Context.OperationId, originalContent);
                         foreach (var item in partitionResult.Response.Data)
                         {
                             converted.Response.Data.Add(item);
