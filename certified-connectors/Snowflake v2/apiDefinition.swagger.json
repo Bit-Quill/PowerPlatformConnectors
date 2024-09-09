@@ -153,6 +153,10 @@
                       "type": "string",
                       "description": "StatementHandle"
                     },
+                    "StatementHandles": {
+                      "type": "array",
+                      "description": "StatementHandles from executing multiple statements"
+                    },
                     "CreatedOn": {
                       "type": "string",
                       "description": "CreatedOn"

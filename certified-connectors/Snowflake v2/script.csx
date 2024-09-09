@@ -339,6 +339,7 @@ public class Script : ScriptBase
                     RequestId = contentAsJson["requestId"].ToString(),
                     SqlState = contentAsJson["sqlState"].ToString(),
                     StatementHandle = contentAsJson["statementHandle"].ToString(),
+                    StatementHandles = contentAsJson["statementHandles"]?.Select(x => x.ToString()).ToArray(),
                     CreatedOn = ConvertToUTC(contentAsJson["createdOn"].ToString(), TimeInterval.Milliseconds)
                 };
 
@@ -465,7 +466,10 @@ public class Script : ScriptBase
 
         public string? StatementHandle { get; set; }
 
+        public string[]? StatementHandles { get; set; }
+
         public string? CreatedOn { get; set; }
+
         public string? Message { get; set; }
     }
 
