@@ -82,14 +82,14 @@ public class Script : ScriptBase
             HttpResponseMessage response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
             if (response.IsSuccessStatusCode)
             {
-                if(IsFullResponseWithData())
+                if(IsFullResponseWithData(response))
                 {
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_FullReponseWithData(responseContent, Context.OperationId, originalContent);
 
                     return converted.GetAsResponse();
                 }
-                else if(IsAsyncResponse())
+                else if(IsAsyncResponse(response))
                 {
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_AsyncResponse(responseContent, Context.OperationId);
@@ -154,16 +154,16 @@ public class Script : ScriptBase
         return (nullable == "true");
     }
 
-    private bool IsFullResponseWithData()
+    private bool IsFullResponseWithData(HttpResponseMessage response)
     {
         return (Context.OperationId == OP_EXECUTE_SQL || Context.OperationId == OP_GET_RESULTS)
-            && GetQueryStringParam(QueryString_Async) != "true";
+            && response.StatusCode == HttpStatusCode.OK;
     }
 
-    private bool IsAsyncResponse()
+    private bool IsAsyncResponse(HttpResponseMessage response)
     {
-        return Context.OperationId == OP_EXECUTE_SQL &&
-            GetQueryStringParam(QueryString_Async) == "true";
+        return Context.OperationId == OP_EXECUTE_SQL 
+            && response.StatusCode == HttpStatusCode.Accepted;
     }
 
     private ConvertObjectResult ConvertToObjects_AsyncResponse(string content, string operationId)
@@ -180,6 +180,7 @@ public class Script : ScriptBase
                 Message = contentAsJson["message"]?.ToString(),
                 StatementStatusUrl = contentAsJson["statementStatusUrl"]?.ToString(),
                 StatementHandle = contentAsJson["statementHandle"]?.ToString(),
+                StatementHandles = contentAsJson["statementHandles"]?.Select(x => x.ToString()).ToArray(),
             };
 
             return new ConvertObjectResult()
