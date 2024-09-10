@@ -451,7 +451,7 @@ public class Script : ScriptBase
 
     public class PerformanceData
     {
-        public DateTimeOffset BeingFetch {get;set;}
+        public DateTimeOffset BeginFetch {get;set;}
         public DateTimeOffset EndFetch {get;set;}
         public int FetchDurationSeconds {get;set;}
 
