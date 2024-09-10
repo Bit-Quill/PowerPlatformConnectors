@@ -82,14 +82,14 @@ public class Script : ScriptBase
             HttpResponseMessage response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
             if (response.IsSuccessStatusCode)
             {
-                if(IsFullResponseWithData(response))
+                if(IsFullResponseWithData())
                 {
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_FullReponseWithData(responseContent, Context.OperationId, originalContent);
 
                     return converted.GetAsResponse();
                 }
-                else if(IsAsyncResponse(response))
+                else if(IsAsyncResponse())
                 {
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_AsyncResponse(responseContent, Context.OperationId);
@@ -154,16 +154,16 @@ public class Script : ScriptBase
         return (nullable == "true");
     }
 
-    private bool IsFullResponseWithData(HttpResponseMessage response)
+    private bool IsFullResponseWithData()
     {
         return (Context.OperationId == OP_EXECUTE_SQL || Context.OperationId == OP_GET_RESULTS)
-            && response.StatusCode == HttpStatusCode.OK;
+            && GetQueryStringParam(QueryString_Async) != "true";
     }
 
-    private bool IsAsyncResponse(HttpResponseMessage response)
+    private bool IsAsyncResponse()
     {
-        return Context.OperationId == OP_EXECUTE_SQL 
-            && response.StatusCode == HttpStatusCode.Accepted;
+        return Context.OperationId == OP_EXECUTE_SQL &&
+            GetQueryStringParam(QueryString_Async) == "true";
     }
 
     private ConvertObjectResult ConvertToObjects_AsyncResponse(string content, string operationId)
