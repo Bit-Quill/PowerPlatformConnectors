@@ -47,8 +47,10 @@ public class Script : ScriptBase
 
     public override async Task<HttpResponseMessage> ExecuteAsync()
     {
+        var perfData = new PerformanceData();
         try
         {
+            perfData.BeginPreFetch = DateTimeOffset.UtcNow;
             var originalContent = await Context.Request.Content.ReadAsStringAsync().ConfigureAwait(false);
 
             if (Context.OperationId == OP_CONVERT)
@@ -79,7 +81,11 @@ public class Script : ScriptBase
                 Context.Request.Method = HttpMethod.Get;
             }
 
+            perfData.EndPreFetch = DateTimeOffset.UtcNow;
+            perfData.BeginFetch = DateTimeOffset.UtcNow;
             HttpResponseMessage response = await Context.SendAsync(Context.Request, CancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+            perfData.EndFetch = DateTimeOffset.UtcNow;
+            perfData.BeginConvert = DateTimeOffset.UtcNow;
             if (response.IsSuccessStatusCode)
             {
                 if(IsFullResponseWithData(response))
@@ -87,24 +93,25 @@ public class Script : ScriptBase
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_FullReponseWithData(responseContent, Context.OperationId, originalContent);
 
-                    return converted.GetAsResponse();
+                    response = converted.GetAsResponse();
                 }
                 else if(IsAsyncResponse(response))
                 {
                     var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     var converted = ConvertToObjects_AsyncResponse(responseContent, Context.OperationId);
 
-                    return converted.GetAsResponse();
-                }
-                else
-                {
-                    return response;
+                    response = converted.GetAsResponse();
                 }
             }
-            else
-            {
-                return response;
-            }
+
+
+            perfData.EndConvert = DateTimeOffset.UtcNow;
+            perfData.PreFetchDurationSeconds = (perfData.EndPreFetch - perfData.BeginPreFetch).Value.TotalMilliseconds;
+            perfData.FetchDurationSeconds = (perfData.EndFetch - perfData.BeginFetch).Value.TotalMilliseconds;
+            perfData.ConvertDurationSeconds = (perfData.EndConvert - perfData.BeginConvert).Value.TotalMilliseconds;
+            Context.Logger.LogDebug(JsonConvert.SerializeObject(perfData));
+            
+            return response;
         }
         catch(Exception ex)
         {
@@ -451,13 +458,17 @@ public class Script : ScriptBase
 
     public class PerformanceData
     {
-        public DateTimeOffset BeginFetch {get;set;}
-        public DateTimeOffset EndFetch {get;set;}
-        public int FetchDurationSeconds {get;set;}
+        public DateTimeOffset? BeginPreFetch {get;set;}
+        public DateTimeOffset? EndPreFetch {get;set;}
+        public double? PreFetchDurationSeconds {get;set;}
+
+        public DateTimeOffset? BeginFetch {get;set;}
+        public DateTimeOffset? EndFetch {get;set;}
+        public double? FetchDurationSeconds {get;set;}
 
         public DateTimeOffset? BeginConvert {get;set;}
         public DateTimeOffset? EndConvert {get;set;}
-        public int? ConvertDurationSeconds {get;set;}
+        public double? ConvertDurationSeconds {get;set;}
     }
 
     public class SnowflakeResponseMetadata
