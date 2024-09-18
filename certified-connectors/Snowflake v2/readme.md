@@ -1,5 +1,5 @@
-# Snowflake
 
+# Snowflake API Reference
 This connector is based on the [Snowflake SQL REST API](https://docs.snowflake.com/en/developer-guide/sql-api/index.html). Snowflake enables data storage, processing, and analytic solutions that are faster, easier to use, and more flexible than traditional offerings. The connector uses the Snowflake REST API V2 to submit synchronous and asynchronous queries and retrieve corresponding results.
 
 ## Publisher: Snowflake
@@ -72,7 +72,22 @@ CREATE SECURITY INTEGRATION <integration name>
 
 1. If you get a 500 response when creating a new connection, that is a transient error. Please wait a few minutes and try again.
 2. If you get a 401 response and your Host field in Step 1 follows this format "orgname-accountname," replace the Host field with your "locator" URL.
-3. The connector may time out with large query results. 
+3. The connector may time out with large query results. This is due to a general limitation that a custom connector must finish all operations, including fetching the data from snowflake is a total of 5 seconds as documented here.
+    * >https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code#custom-code-faq
+      >
+      >Q: Are there any limits?<br/>
+      >A:Yes. Your script must finish execution within 5 seconds and the size of your script file can’t be more than 1 MB.
+4. Multi-statement calls do not support bindings (aka sql query parameters).
+5. Null values will always be omitted from the result set of a query via a custom connector. Testing indicates that this is neither a behavior of the snowflake API nor the customer connector but rather the serialization settings of the APIM layer that inherently lives on top of the custom connector as part of the power platform.
+    * See more on how the "nullable" parameter work using the link in the [Snowlake API Reference](#snowflake-api-reference) section.
+6. Endpoint filtering is only supported for 6 built in connectors, as documented by Microsoft.
+    * >Connector endpoint filtering allows admins to govern which specific endpoints makers can connect to when building apps, flows, or chatbots. It is configured within a data loss prevention (DLP) policy, and it is exclusively available for six connectors:
+      >- HTTP<br/>
+      >- HTTP with Microsoft Entra ID (AD)<br/>
+      >- HTTP Webhook<br/>
+      >- SQL Server (includes using SQL Server Connector to access Azure Synapse data warehouse)<br/>
+      >- Azure Blob Storage<br/>
+      >- SMTP
 
 ## Frequently Asked Questions
 
