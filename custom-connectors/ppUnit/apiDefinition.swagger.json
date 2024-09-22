@@ -1,0 +1,149 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ppUnit",
+    "description": "ppUnit is a unit-testing framework for all Power Platform connectors.",
+    "version": "1.0",
+    "contact": {
+      "name": "Improving",
+      "url": "https://improving.com",
+      "email": "joe.brinkman@improving.com"
+    }
+  },
+  "host": "api.ppunit.com",
+  "basePath": "/",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/resulturl": {
+      "post": {
+        "summary": "Get Results Url",
+        "description": "Returns the URL for the result of running a given Flow.",
+        "operationId": "GetResultsUrl",
+        "parameters": [
+          {
+            "$ref": "#/parameters/Workflow"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ResultsUrl"
+            }
+          },
+          "default": {
+            "description": "Operation Failed."
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/assertequal": {
+      "post": {
+        "summary": "Assert Equal",
+        "description": "Asserts that two values are equal.",
+        "operationId": "AssertEqual",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "actual": {
+                  "type": "string",
+                  "description": "The actual value.",
+                  "title": "actual",
+                  "required": true
+                },
+                "expected": {
+                  "type": "string",
+                  "description": "The expected value.",
+                  "title": "expected",
+                  "required": true
+                },
+                "failureCode": {
+                  "type": "number",
+                  "description": "The code to return if the assertion fails.",
+                  "title": "failureCode",
+                  "default": 500,
+                  "x-ms-visibility": "advanced"
+                },
+                "failureMessage": {
+                  "type": "string",
+                  "description": "The message to return if the assertion fails.",
+                  "title": "failureMessage",
+                  "default": "Assertion failed.",
+                  "x-ms-visibility": "advanced"
+                }
+              },
+              "required": ["actual", "expected"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "default": {
+            "description": "Operation Failed."
+          }
+        },
+        "deprecated": false
+      }
+    }
+  },
+  "definitions": {
+    "ResultsUrl": {
+      "type": "object",
+      "properties": {
+        "resultUrl": {
+          "type": "string",
+          "description": "The URL to the flow results",
+          "title": "resultUrl"
+        }
+      }
+    },
+    "Status": {
+      "type": "object",
+      "properties": {
+        "statusCode": {
+          "type": "number",
+          "description": "The result of the assertion.",
+          "title": "result"
+        },
+        "statusMessage": {
+          "type": "string",
+          "description": "The message to return.",
+          "title": "statusMessage"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "Workflow": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "description": "Use the workflow() function to get the current workflow.",
+            "title": "Workflow"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {},
+  "security": [],
+  "tags": []
+}
