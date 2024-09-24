@@ -73,23 +73,12 @@ CREATE SECURITY INTEGRATION <integration name>
 1. If you get a 500 response when creating a new connection, that is a transient error. Please wait a few minutes and try again.
 2. If you get a 401 response and your Host field in Step 1 follows this format "orgname-accountname," replace the Host field with your "locator" URL.
 3. The connector may time out with large query results. This is due to a general limitation that a custom connector must finish all operations, including fetching the data from snowflake is a total of 5 seconds as documented here.
-    * >[Microsoft Custom Code FAQ](https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code#custom-code-faq)
-      >
-      >Q: Are there any limits?<br/>
-      >A:Yes. Your script must finish execution within 5 seconds and the size of your script file can’t be more than 1 MB.
+    >[Microsoft Custom Code FAQ](https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code#custom-code-faq)
+    >
+    >Q: Are there any limits?<br/>
+    >A:Yes. Your script must finish execution within 5 seconds and the size of your script file can’t be more than 1 MB.
 4. Snowflake does not currently support variable binding in multi-statement SQL requests. This behavior passes through to the connector.
-5. Null values will always be omitted from the result set of a query returned via a custom connector. Testing indicates that this is neither a behavior of the snowflake API nor the custom code (script.csx) but rather the serialization settings of the APIM layer that inherently lives on top of the custom connector as part of the power platform.
-    * See more on how Snowflake's "nullable" parameter works using the link in the [Snowlake API Reference](#snowflake-api-reference) section.
-6. Endpoint filtering is only supported for 6 built in connectors, as documented by Microsoft.
-    * > [Microsoft Connector Endpoint Filtering](https://learn.microsoft.com/en-us/power-platform/admin/connector-endpoint-filtering)
-      > 
-      > Connector endpoint filtering allows admins to govern which specific endpoints makers can connect to when building apps, flows, or chatbots. It is configured within a data loss prevention (DLP) policy, and it is exclusively available for six connectors:
-      >- HTTP<br/>
-      >- HTTP with Microsoft Entra ID (AD)<br/>
-      >- HTTP Webhook<br/>
-      >- SQL Server (includes using SQL Server Connector to access Azure Synapse data warehouse)<br/>
-      >- Azure Blob Storage<br/>
-      >- SMTP
+5. Fields with true Null values are omitted from the result set of a query returned via a custom connector. Fields with quoted null strings ("null") are returned as expected. This is due to the serialization settings of the APIM layer that inherently lives underneath the custom connector as part of the power platform. Refer to the [Snowlake API Reference](#snowflake-api-reference) documentation for more details about the Nullable setting.
 
 ## Frequently Asked Questions
 
