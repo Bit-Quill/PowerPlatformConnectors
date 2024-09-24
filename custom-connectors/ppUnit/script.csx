@@ -67,7 +67,119 @@ public class Script : ScriptBase
         return OK_RESPONSE;
     }
 
+    private HttpResponseMessage GetAssertAll(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
+        var payload = JObject.Parse(input.Payload);
+        var totalSuccess = true;
+        var errors = new List<string>();
+        var index = 0;
+        var statusCode = HttpStatusCode.OK;
+        foreach(var assertion in input.Assertions)
+        {
+            var success = false;
+            var invalidAssertionError = null as string;
+            switch(input.Operator?.ToLower())
+            {
+                case "equals":
+                    success = payload[assertion.LeftExpression] == payload[assertion.RightExpression];
+                    break;
+                case "is":
+                    switch(assertion.RightExpression?.ToLower())
+                    {
+                        case "null":
+                            success = payload[assertion.LeftExpression] == null;
+                            break;
+                        default:
+                            invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
+                    }
+                    break;
+                case "istype":
+                    switch(assertion.RightExpression.ToLower())
+                    {
+                        case "bool":
+                            throw new NotImplemented("How to assert type of a JObject property.");
+                            break;
+                        case "string":
+                            throw new NotImplemented("How to assert type of a JObject property.");
+                            break;
+                        case "object":
+                            throw new NotImplemented("How to assert type of a JObject property.");
+                            break;
+                        case "array":
+                            throw new NotImplemented("How to assert type of a JObject property.");
+                            break;
+                        default:
+                            invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"object\", \"array\"] as the RightExpression.";
+                    }
+
+                    break;
+                case default:
+                    invalidAssertionError = $"The Operator "{assertion.Operator}"" is not supported";
+            }
+
+            if(invalidAssertionError != null)
+            {
+                success = false;
+                statusCode = HttpStatusCode.BadRequest;
+            }
+
+            if(!success)
+            {
+                totalSuccess = false;
+                // an errorOverride is an error that is either syntactic or otherwise indicates 
+                // that the assertion itself is invalid and cannot be evaluated.
+                if(invalidAssertionError == null)
+                {
+                    errors.Add($"Assertion[{index}] failed. {assertion.ErrorMessage}");
+                }
+                else
+                {
+                    errors.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
+                }
+            }
+            index++;
+        }
+
+        var response =  new HttpResponseMessage(statusCode);
+        
+        response.Content = Content = CreateJsonContent(JsonConvert.SerializeObject(new
+        {
+            new AssertAllResult()
+            {
+                Passed = totalSuccess,
+                ErrorMessages = errors.ToArray(),
+            },
+        };
+    }
+
     #region Object Models
+    public class AssertAllPayload()
+    {
+        public string Payload { get; set; }
+        public Assertion[] Assertions { get; set; }
+    }
+
+    /// <summary>
+    /// Valid Assertion Operators:
+    /// "Equals" - compares properties in payload as specified by the Left/RightExpression.
+    /// "Is"  - compares property in payload as specified by LeftExpression and compares to literal specified in RightExpression. The only supported keyword currently is "null".
+    /// "IsType" - compares the type of the property in payload as specified by LeftExpression and compares to type literal specified in RightExpression. The only supported keywords are "bool", "string", "int", "object" and "array".
+    /// </summary>
+    public class Assertion()
+    {
+        public string LeftExpression { get; set; }
+        public string RightExpression { get; set; }
+        public string Operator { get ;set; }
+        public string ErrorMessage {get;set;}
+    }
+
+    public class AssertAllResult()
+    {
+        public bool Passed { get; set; }
+        public string[] ErrorMessages { get ;set; }
+    }
+
     public class AssertEqualInput
     {
         public string actual { get; set; }
