@@ -373,6 +373,13 @@ public class Script : ScriptBase
         public string failureMessage { get; set; }
     }
 
+    public class AssertTrueInput
+    {
+        public string actual { get; set; }
+        public decimal failureCode { get; set; }
+        public string failureMessage { get; set; }
+    }
+
     public class WorkflowRoot
     {
         public string workflow { get; set; }

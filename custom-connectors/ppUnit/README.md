@@ -140,3 +140,8 @@ As part of this sample following actions are supported:
                 }
             }
             ```
+All assertions will return an status code and a status message for all pass or fail conditions. All passing assertions will return the same 200/0k response. Every assertion will
+
+* `Assert Equal`: Asserts that an actual value equals the expected value. 
+
+* `Assert True`: Asserts that a given condition is true. 
