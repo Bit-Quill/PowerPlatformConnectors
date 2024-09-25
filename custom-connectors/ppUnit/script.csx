@@ -107,6 +107,8 @@ public class Script : ScriptBase
                         case "string":
                             type = JObjectType.String;
                             break;
+                        case "float":
+                            type = JObjectType.Float;
                         case "object":
                             type = JObjectType.Object;
                             break;
