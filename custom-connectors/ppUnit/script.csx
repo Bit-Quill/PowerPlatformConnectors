@@ -88,31 +88,42 @@ public class Script : ScriptBase
                     switch(assertion.RightExpression?.ToLower())
                     {
                         case "null":
-                            success = payload[assertion.LeftExpression] == null;
+                            success = payload[assertion.LeftExpression].Type == JObjectType.Null;
                             break;
+                        case "empty":
+                            success = (payload[assertion.LeftExpression].Type == JObjectType.Array && payload[assertion.LeftExpression].Any())
+                            || (payload[assertion.LeftExpression].Type == JObjectType.String && !payload[assertion.LeftExpression].ToString().Any());
                         default:
                             invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
                     }
                     break;
                 case "istype":
+                    JObjectType type;
                     switch(assertion.RightExpression.ToLower())
                     {
                         case "bool":
-                            throw new NotImplemented("How to assert type of a JObject property.");
+                            type = JObjectType.Boolean;
                             break;
                         case "string":
-                            throw new NotImplemented("How to assert type of a JObject property.");
+                            type = JObjectType.String;
                             break;
                         case "object":
-                            throw new NotImplemented("How to assert type of a JObject property.");
+                            type = JObjectType.Object;
                             break;
                         case "array":
-                            throw new NotImplemented("How to assert type of a JObject property.");
+                            type = JObjectType.Array;
+                            break;
+                        case "null":
+                            type = JObjectType.Null;
                             break;
                         default:
                             invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"object\", \"array\"] as the RightExpression.";
                     }
 
+                    if(type != null)
+                    {
+                        success = payload[assertion.LeftExpression].Type == type;
+                    }
                     break;
                 case default:
                     invalidAssertionError = $"The Operator "{assertion.Operator}"" is not supported";
