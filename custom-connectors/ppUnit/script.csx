@@ -67,6 +67,23 @@ public class Script : ScriptBase
         return OK_RESPONSE;
     }
 
+    private (string, double?) ValidateAndGetComparisonValue(Assertion assertion)
+    {
+        if(payload[assertion.LeftExpression].Type == JTokenType.Integer
+            || payload[assertion.LeftExpression].Type == JTokenType.Float)
+        {
+            // Using double is kind of a cheat since it can represent all the numeric types (int/float/double). 
+            // Hopefully this does not lead to any odd behavior or edge cases due to double floating point rounding errors.
+            // Decimal would be more precise in representing both whole numbers and fractions, but then how do you decide on precision of the variable
+            // you return from this method if it's an irrational number (neverending decimal)?
+            return (null as string, double.Parse(assertion.RightExpression));
+        }
+        else
+        {
+            return ($"Numeric comparison operators require LeftExpression to refer to a property in the payload of numeric type and RightExpression must be a string that represents a numeric type.", null as double?);
+        }
+    }
+
     private HttpResponseMessage GetAssertAll(string content)
     {
         var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
@@ -79,47 +96,101 @@ public class Script : ScriptBase
         {
             var success = false;
             var invalidAssertionError = null as string;
+            double? comparisonValue;
             switch(input.Operator?.ToLower())
             {
-                case "equals":
-                    success = payload[assertion.LeftExpression] == payload[assertion.RightExpression];
+                case "lessthan":
+                case "<":
+                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
+                    if(invalidAssertionError == null)
+                    {
+                        success = payload[assertion.LeftExpression].Value<double>() < compareToValue;
+                    }
+                    break;
+                case "lessthanorequalto":
+                case "<=";
+                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
+                    if(invalidAssertionError == null)
+                    {
+                        success = payload[assertion.LeftExpression].Value<double>() <= compareToValue;
+                    }
+                    break;
+                case "greaterthan":
+                case ">":
+                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
+                    if(invalidAssertionError == null)
+                    {
+                        success = payload[assertion.LeftExpression].Value<double>() > compareToValue;
+                    }
+                    break;
+                case "greaterthanorequalto":
+                case ">=":
+                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
+                    if(invalidAssertionError == null)
+                    {
+                        success = payload[assertion.LeftExpression].Value<double>() >= compareToValue;
+                    }
+                    break;
+                case "equalto":
+                case "==":
+                    throw new NotImplementedException("This is only supported for Integer, Float, String and Bool types");
+                    if(payload[assertion.LeftExpression].Type == JTokenType.String)
+                    {
+                        success = payload[assertion.LeftExpression].Value<string>() == assertion.RightExpression;
+                    }
+                    else if(payload[assertion.LeftExpression].Type == JTokenType.Int
+                        || payload[assertion.LeftExpression].Type == JTokenType.Float)
+                    {
+                        success = payload[assertion.LeftExpression].Value<double>() == double.Parse(assertion.RightExpression);
+                    }
+                    else if(payload[assertion.LeftExpression].Type == JTokenType.Boolean)
+                    {
+                        success = payload[assertion.LeftExpression].Value<bool>() == bool.Parse(assertion.RightExpression);
+                    }
+                    else
+                    {
+                        invalidAssertionError = $"Type of LeftExpression property is not supported. Must be string, int, float or bool.";
+                    }
                     break;
                 case "is":
                     switch(assertion.RightExpression?.ToLower())
                     {
                         case "null":
-                            success = payload[assertion.LeftExpression].Type == JObjectType.Null;
+                            success = payload[assertion.LeftExpression].Type == JTokenType.Null;
                             break;
                         case "empty":
-                            success = (payload[assertion.LeftExpression].Type == JObjectType.Array && payload[assertion.LeftExpression].Any())
-                            || (payload[assertion.LeftExpression].Type == JObjectType.String && !payload[assertion.LeftExpression].ToString().Any());
+                            success = (payload[assertion.LeftExpression].Type == JTokenType.Array && payload[assertion.LeftExpression].Any())
+                            || (payload[assertion.LeftExpression].Type == JTokenType.String && !payload[assertion.LeftExpression].ToString().Any());
                         default:
                             invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
                     }
                     break;
                 case "istype":
-                    JObjectType type;
+                    JTokenType type;
                     switch(assertion.RightExpression.ToLower())
                     {
                         case "bool":
-                            type = JObjectType.Boolean;
+                            type = JTokenType.Boolean;
                             break;
                         case "string":
-                            type = JObjectType.String;
+                            type = JTokenType.String;
+                            break;
+                        case "int":
+                            type = JTokenType.Integer;
                             break;
                         case "float":
-                            type = JObjectType.Float;
+                            type = JTokenType.Float;
                         case "object":
-                            type = JObjectType.Object;
+                            type = JTokenType.Object;
                             break;
                         case "array":
-                            type = JObjectType.Array;
+                            type = JTokenType.Array;
                             break;
                         case "null":
-                            type = JObjectType.Null;
+                            type = JTokenType.Null;
                             break;
                         default:
-                            invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"object\", \"array\"] as the RightExpression.";
+                            invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"int\", \"float\", \"object\", \"array\", \"null\"] as the RightExpression.";
                     }
 
                     if(type != null)
