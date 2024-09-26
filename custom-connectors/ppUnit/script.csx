@@ -84,6 +84,13 @@ public class Script : ScriptBase
         }
     }
 
+    private (string[], bool) AssertAll(Assertion assertion)
+    {
+        throw new NotImplementedException(
+            @"If we are going to support chaining and nesting of assertions we will have to support 
+            some type of nesting or recursion to traverse the tree and aggregate the result;");
+    }
+
     private HttpResponseMessage GetAssertAll(string content)
     {
         var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
@@ -94,6 +101,13 @@ public class Script : ScriptBase
         var statusCode = HttpStatusCode.OK;
         foreach(var assertion in input.Assertions)
         {
+            // finish this later.
+            // if(assertion.Assertions != null
+            //     && assertion.Assertions.Any())
+            // {
+            //     AssertAll(assertion);
+            // }
+
             var success = false;
             var invalidAssertionError = null as string;
             double? comparisonValue;
@@ -208,6 +222,16 @@ public class Script : ScriptBase
                 statusCode = HttpStatusCode.BadRequest;
             }
 
+            throw new NotImplementedException("Logical operators and grouping not implemented. See comment block below");
+            // If we add support for grouping assertions by logical operator (AND/OR) this would be where you'd need to use that operator.
+            // Also might need to consider when setting the initial value of totalSuccess whether it should start as...
+            // - False (OR operator)
+            // - True (AND operator)
+            //
+            // This is also probably where you might decide to abort and just return the result if the user has specified a short circuiting logical operator (ANDD/ORR)
+            //
+            // In addition to the other changes noted here, there needs to be some sort of loop or recursion at high level that handles
+            // the execution and aggregation of each logical grouping of assertions into the final result. And also correctly collects an array of feedback messages if assertions fail...
             if(!success)
             {
                 totalSuccess = false;
@@ -252,16 +276,23 @@ public class Script : ScriptBase
     /// </summary>
     public class Assertion()
     {
+        // Valid Values ["OR", "ORR", "AND", "ANDD"]
+        // how to chain together the results of each individual Assertion in the Assertions array.
+        public string LogicalOperator { get ; set; }
+        public Assertion[] Assertions { get; set; }
+
+
+        // Really if the top two properties are not null, then these bottom properties should not be filled in.
         public string LeftExpression { get; set; }
         public string RightExpression { get; set; }
         public string Operator { get ;set; }
-        public string ErrorMessage {get;set;}
+        public string ErrorMessage { get; set; }
     }
 
     public class AssertAllResult()
     {
         public bool Passed { get; set; }
-        public string[] ErrorMessages { get ;set; }
+        public string[] ErrorMessages { get; set; }
     }
 
     public class AssertEqualInput
