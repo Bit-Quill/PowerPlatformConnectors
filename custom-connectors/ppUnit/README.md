@@ -144,4 +144,6 @@ All assertions will return an status code and a status message for all pass or f
 
 * `Assert Equal`: Asserts that an actual value equals the expected value. 
 
-* `Assert True`: Asserts that a given condition is true. 
+* `Assert True`: Asserts that a given condition is true.
+
+* `Assert False`: Asserts that a given condition is false.

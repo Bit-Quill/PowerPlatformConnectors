@@ -23,7 +23,7 @@
         "operationId": "GetResultsUrl",
         "parameters": [
           {
-            "$ref": "#/parameters/Workflow"
+            "$ref": "#/parameters/WorkflowParams"
           }
         ],
         "responses": {
@@ -98,41 +98,79 @@
         "operationId": "AssertEqual",
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
+            "$ref": "#/parameters/EqualityParams"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
-              "type": "object",
-              "properties": {
-                "actual": {
-                  "type": "string",
-                  "description": "The actual value.",
-                  "title": "actual",
-                  "required": true
-                },
-                "expected": {
-                  "type": "string",
-                  "description": "The expected value.",
-                  "title": "expected",
-                  "required": true
-                },
-                "failureCode": {
-                  "type": "number",
-                  "description": "The code to return if the assertion fails.",
-                  "title": "failureCode",
-                  "default": 400,
-                  "x-ms-visibility": "advanced"
-                },
-                "failureMessage": {
-                  "type": "string",
-                  "description": "The message to return if the assertion fails.",
-                  "title": "failureMessage",
-                  "default": "Assertion failed.",
-                  "x-ms-visibility": "advanced"
-                }
-              },
-              "required": ["actual", "expected"]
+              "$ref": "#/definitions/Status"
             }
+          },
+          "default": {
+            "description": "Operation Failed."
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/assertnotequal": {
+      "post": {
+        "summary": "Assert Not Equal",
+        "description": "Asserts that two values are not equal.",
+        "operationId": "AssertNotEqual",
+        "parameters": [
+          {
+            "$ref": "#/parameters/EqualityParams"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "default": {
+            "description": "Operation Failed."
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/asserttrue": {
+      "post": {
+        "summary": "Assert True",
+        "description": "Asserts that a value equates to true.",
+        "operationId": "AssertTrue",
+        "parameters": [
+          {
+            "$ref": "#/parameters/BooleanParams"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "default": {
+            "description": "Operation Failed."
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/assertfalse": {
+      "post": {
+        "summary": "Assert False",
+        "description": "Asserts that a value equates to false.",
+        "operationId": "AssertFalse",
+        "parameters": [
+          {
+            "$ref": "#/parameters/BooleanParams"
           }
         ],
         "responses": {
@@ -220,7 +258,7 @@
     }
   },
   "parameters": {
-    "Workflow": {
+    "WorkflowParams": {
       "name": "body",
       "in": "body",
       "required": true,
@@ -234,9 +272,86 @@
           }
         }
       }
+    },
+    "EqualityParams": {
+      "name": "body",
+      "in": "body",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "actual": {
+            "type": "string",
+            "description": "The actual value.",
+            "title": "actual"
+          },
+          "expected": {
+            "type": "string",
+            "description": "The expected value.",
+            "title": "expected"
+          },
+          "failureCode": {
+            "type": "number",
+            "description": "The code to return if the assertion fails.",
+            "title": "failureCode",
+            "default": 400,
+            "x-ms-visibility": "advanced"
+          },
+          "failureMessage": {
+            "type": "string",
+            "description": "The message to return if the assertion fails.",
+            "title": "failureMessage",
+            "default": "Assertion failed.",
+            "x-ms-visibility": "advanced"
+          }
+        },
+        "required": ["actual", "expected"]
+      }
+    },
+    "BooleanParams": {
+      "name": "body",
+      "in": "body",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "actual": {
+            "type": "string",
+            "description": "The actual value.",
+            "title": "actual"
+          },
+          "failureCode": {
+            "type": "number",
+            "description": "The code to return if the assertion fails.",
+            "title": "failureCode",
+            "default": 400,
+            "x-ms-visibility": "advanced"
+          },
+          "failureMessage": {
+            "type": "string",
+            "description": "The message to return if the assertion fails.",
+            "title": "failureMessage",
+            "default": "Assertion failed.",
+            "x-ms-visibility": "advanced"
+          }
+        },
+        "required": ["actual"]
+      }
     }
   },
   "securityDefinitions": {},
   "security": [],
-  "tags": []
+  "tags": [],
+  "x-ms-connector-metadata": [
+    {
+      "propertyName": "Website",
+      "propertyValue": "https://www.snowflake.com"
+    },
+    {
+      "propertyName": "Privacy policy",
+      "propertyValue": "https://www.snowflake.com/privacy-policy"
+    },
+    {
+      "propertyName": "Categories",
+      "propertyValue": "Data"
+    }
+  ]
 }

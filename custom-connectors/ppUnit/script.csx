@@ -52,7 +52,7 @@ public class Script : ScriptBase
     /// <returns></returns>
     private HttpResponseMessage GetAssertEqual(string content)
     {
-        var input = JsonConvert.DeserializeObject<AssertEqualInput>(content);
+        var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
 
         if (input.actual == null && input.expected == null)
         {
@@ -330,6 +330,33 @@ public class Script : ScriptBase
 
         return response;
     }
+    private HttpResponseMessage GetAssertNotEqual(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
+
+        boolean actualNull  = input.actual == null;
+        boolean expectedNull = input.expected == null;
+
+        if (actualNull ^ expectedNull)
+        {
+            return OK_RESPONSE;
+        }
+
+        if ((actualNull && expectedNull) || input.actual.Equals(input.expected))
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = CreateJsonContent(JsonConvert.SerializeObject(new
+                {
+                    statusCode = input.failureCode,
+                    statusMessage = input.failureMessage
+                }))
+            };
+        }
+
+        return OK_RESPONSE;
+    }
+
 
     #region Object Models
     public class AssertAllPayload
@@ -365,7 +392,7 @@ public class Script : ScriptBase
         public List<string> ErrorMessages { get; set; } = new List<string>();
     }
 
-    public class AssertEqualInput
+    public class AssertEqualityInput
     {
         public string actual { get; set; }
         public string expected { get; set; }
@@ -373,7 +400,7 @@ public class Script : ScriptBase
         public string failureMessage { get; set; }
     }
 
-    public class AssertTrueInput
+    public class AssertBooleanInput
     {
         public string actual { get; set; }
         public decimal failureCode { get; set; }
