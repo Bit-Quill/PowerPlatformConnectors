@@ -1,3 +1,10 @@
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using SnowflakeConnectorConsoleApp;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Net;
+using System;
+
 public class Script : ScriptBase
 {
     private readonly HttpResponseMessage OK_RESPONSE;
@@ -21,6 +28,8 @@ public class Script : ScriptBase
                 return GetResultUrl(originalContent);
             case "AssertEqual":
                 return GetAssertEqual(originalContent);
+            case "AssertAll":
+                return GetAssertAllResponse(originalContent);
             default:
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
@@ -67,9 +76,9 @@ public class Script : ScriptBase
         return OK_RESPONSE;
     }
 
-    private (string, double?) ValidateAndGetComparisonValue(Assertion assertion)
+    private (string, double?) ValidateAndGetComparisonValue(JObject payload, Assertion assertion)
     {
-        if(payload[assertion.LeftExpression].Type == JTokenType.Integer
+        if (payload[assertion.LeftExpression].Type == JTokenType.Integer
             || payload[assertion.LeftExpression].Type == JTokenType.Float)
         {
             // Using double is kind of a cheat since it can represent all the numeric types (int/float/double). 
@@ -84,215 +93,280 @@ public class Script : ScriptBase
         }
     }
 
-    private (string[], bool) AssertAll(Assertion assertion)
+    private AssertAllResult AssertAll(JObject payload, Assertion topLevelAssertion)
     {
-        throw new NotImplementedException(
-            @"If we are going to support chaining and nesting of assertions we will have to support 
-            some type of nesting or recursion to traverse the tree and aggregate the result;");
-    }
+        var currentResult = new AssertAllResult();
+        var result = new AssertAllResult();
 
-    private HttpResponseMessage GetAssertAll(string content)
-    {
-        var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
-        var payload = JObject.Parse(input.Payload);
-        var totalSuccess = true;
-        var errors = new List<string>();
-        var index = 0;
-        var statusCode = HttpStatusCode.OK;
-        foreach(var assertion in input.Assertions)
+        var shortCircuitCondition = null as bool?;
+        Func<bool, bool, bool> comparisonFunc;
+        switch (topLevelAssertion.LogicalOperator.ToUpper())
         {
-            // finish this later.
-            // if(assertion.Assertions != null
-            //     && assertion.Assertions.Any())
-            // {
-            //     AssertAll(assertion);
-            // }
+            case "ANDD":
+            case "&&":
+                shortCircuitCondition = false;
+                result.Passed = true;
+                comparisonFunc = Andd;
+                break;
+            case "AND":
+            case "&":
+                shortCircuitCondition = false;
+                result.Passed = true;
+                comparisonFunc = And;
+                break;
+            case "ORR":
+            case "||":
+                shortCircuitCondition = true;
+                result.Passed = false;
+                comparisonFunc = Orr;
+                break;
+            case "OR":
+            case "|":
+                shortCircuitCondition = false;
+                result.Passed = false;
+                comparisonFunc = Or;
+                break;
+            default:
+                throw new NotImplementedException("Need to handle this error as invalid LogicalOperator.");
+        };
 
-            var success = false;
+        var index = 0;
+        foreach (var assertion in topLevelAssertion.Assertions)
+        {
             var invalidAssertionError = null as string;
-            double? comparisonValue;
-            switch(input.Operator?.ToLower())
+            if (assertion.LogicalOperator != null)
             {
-                case "lessthan":
-                case "<":
-                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
-                    if(invalidAssertionError == null)
+                currentResult = AssertAll(payload, assertion);
+            }
+            else
+            {
+                double? comparisonValue;
+
+                switch (assertion.Operator?.ToLower())
+                {
+                    case "lessthan":
+                    case "<":
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        if (invalidAssertionError == null)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() < comparisonValue;
+                        }
+                        break;
+                    case "lessthanorequalto":
+                    case "<=":
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        if (invalidAssertionError == null)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() <= comparisonValue;
+                        }
+                        break;
+                    case "greaterthan":
+                    case ">":
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        if (invalidAssertionError == null)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() > comparisonValue;
+                        }
+                        break;
+                    case "greaterthanorequalto":
+                    case ">=":
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        if (invalidAssertionError == null)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() >= comparisonValue;
+                        }
+                        break;
+                    case "equalto":
+                    case "equals":
+                    case "==":
+                        if (payload[assertion.LeftExpression].Type == JTokenType.String)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<string>() == assertion.RightExpression;
+                        }
+                        else if (payload[assertion.LeftExpression].Type == JTokenType.Integer
+                            || payload[assertion.LeftExpression].Type == JTokenType.Float)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() == double.Parse(assertion.RightExpression);
+                        }
+                        else if (payload[assertion.LeftExpression].Type == JTokenType.Boolean)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Value<bool>() == bool.Parse(assertion.RightExpression);
+                        }
+                        else
+                        {
+                            invalidAssertionError = $"Type of LeftExpression property is not supported. Must be string, int, float or bool.";
+                        }
+                        break;
+                    case "is":
+                        switch (assertion.RightExpression?.ToLower())
+                        {
+                            case "null":
+                                currentResult.Passed = payload[assertion.LeftExpression].Type == JTokenType.Null;
+                                break;
+                            case "empty":
+                                currentResult.Passed = (payload[assertion.LeftExpression].Type == JTokenType.Array && !payload[assertion.LeftExpression].Any())
+                                || (payload[assertion.LeftExpression].Type == JTokenType.String && !payload[assertion.LeftExpression].ToString().Any());
+                                break;
+                            default:
+                                invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
+                                break;
+                        }
+                        break;
+                    case "istype":
+                        JTokenType? type = null;
+                        switch (assertion.RightExpression.ToLower())
+                        {
+                            case "bool":
+                                type = JTokenType.Boolean;
+                                break;
+                            case "string":
+                                type = JTokenType.String;
+                                break;
+                            case "int":
+                                type = JTokenType.Integer;
+                                break;
+                            case "float":
+                                type = JTokenType.Float;
+                                break;
+                            case "object":
+                                type = JTokenType.Object;
+                                break;
+                            case "array":
+                                type = JTokenType.Array;
+                                break;
+                            case "null":
+                                type = JTokenType.Null;
+                                break;
+                            default:
+                                invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"int\", \"float\", \"object\", \"array\", \"null\"] as the RightExpression.";
+                                break;
+                        }
+
+                        if (type != null)
+                        {
+                            currentResult.Passed = payload[assertion.LeftExpression].Type == type;
+                        }
+                        break;
+                    default:
+                        invalidAssertionError = $"The Operator \"{assertion.Operator}\" is not supported";
+                        break;
+                }
+
+                if (assertion.Negate)
+                {
+                    currentResult.Passed = !currentResult.Passed;
+                }
+
+
+                // this type of error overrides any sort of assertion result b/c it denotes that one of the assertions is invalid.
+                if (invalidAssertionError != null)
+                {
+                    currentResult.Passed = false;
+                    currentResult.StatusCode = HttpStatusCode.BadRequest;
+                }
+
+                if (!currentResult.Passed)
+                {
+                    // an errorOverride is an error that is either syntactic or otherwise indicates 
+                    // that the assertion itself is invalid and cannot be evaluated.
+                    if (invalidAssertionError == null)
                     {
-                        success = payload[assertion.LeftExpression].Value<double>() < compareToValue;
-                    }
-                    break;
-                case "lessthanorequalto":
-                case "<=";
-                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
-                    if(invalidAssertionError == null)
-                    {
-                        success = payload[assertion.LeftExpression].Value<double>() <= compareToValue;
-                    }
-                    break;
-                case "greaterthan":
-                case ">":
-                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
-                    if(invalidAssertionError == null)
-                    {
-                        success = payload[assertion.LeftExpression].Value<double>() > compareToValue;
-                    }
-                    break;
-                case "greaterthanorequalto":
-                case ">=":
-                    (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
-                    if(invalidAssertionError == null)
-                    {
-                        success = payload[assertion.LeftExpression].Value<double>() >= compareToValue;
-                    }
-                    break;
-                case "equalto":
-                case "==":
-                    throw new NotImplementedException("This is only supported for Integer, Float, String and Bool types");
-                    if(payload[assertion.LeftExpression].Type == JTokenType.String)
-                    {
-                        success = payload[assertion.LeftExpression].Value<string>() == assertion.RightExpression;
-                    }
-                    else if(payload[assertion.LeftExpression].Type == JTokenType.Int
-                        || payload[assertion.LeftExpression].Type == JTokenType.Float)
-                    {
-                        success = payload[assertion.LeftExpression].Value<double>() == double.Parse(assertion.RightExpression);
-                    }
-                    else if(payload[assertion.LeftExpression].Type == JTokenType.Boolean)
-                    {
-                        success = payload[assertion.LeftExpression].Value<bool>() == bool.Parse(assertion.RightExpression);
+                        currentResult.ErrorMessages.Add($"Assertion[{index}] failed. {assertion.ErrorMessage}");
                     }
                     else
                     {
-                        invalidAssertionError = $"Type of LeftExpression property is not supported. Must be string, int, float or bool.";
-                    }
-                    break;
-                case "is":
-                    switch(assertion.RightExpression?.ToLower())
-                    {
-                        case "null":
-                            success = payload[assertion.LeftExpression].Type == JTokenType.Null;
-                            break;
-                        case "empty":
-                            success = (payload[assertion.LeftExpression].Type == JTokenType.Array && payload[assertion.LeftExpression].Any())
-                            || (payload[assertion.LeftExpression].Type == JTokenType.String && !payload[assertion.LeftExpression].ToString().Any());
-                        default:
-                            invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
-                    }
-                    break;
-                case "istype":
-                    JTokenType type;
-                    switch(assertion.RightExpression.ToLower())
-                    {
-                        case "bool":
-                            type = JTokenType.Boolean;
-                            break;
-                        case "string":
-                            type = JTokenType.String;
-                            break;
-                        case "int":
-                            type = JTokenType.Integer;
-                            break;
-                        case "float":
-                            type = JTokenType.Float;
-                        case "object":
-                            type = JTokenType.Object;
-                            break;
-                        case "array":
-                            type = JTokenType.Array;
-                            break;
-                        case "null":
-                            type = JTokenType.Null;
-                            break;
-                        default:
-                            invalidAssertionError = $"The IsType operator only supports the keywords [\"bool\", \"string\", \"int\", \"float\", \"object\", \"array\", \"null\"] as the RightExpression.";
+                        currentResult.ErrorMessages.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
                     }
 
-                    if(type != null)
-                    {
-                        success = payload[assertion.LeftExpression].Type == type;
-                    }
-                    break;
-                case default:
-                    invalidAssertionError = $"The Operator "{assertion.Operator}"" is not supported";
-            }
-
-            if(invalidAssertionError != null)
-            {
-                success = false;
-                statusCode = HttpStatusCode.BadRequest;
-            }
-
-            throw new NotImplementedException("Logical operators and grouping not implemented. See comment block below");
-            // If we add support for grouping assertions by logical operator (AND/OR) this would be where you'd need to use that operator.
-            // Also might need to consider when setting the initial value of totalSuccess whether it should start as...
-            // - False (OR operator)
-            // - True (AND operator)
-            //
-            // This is also probably where you might decide to abort and just return the result if the user has specified a short circuiting logical operator (ANDD/ORR)
-            //
-            // In addition to the other changes noted here, there needs to be some sort of loop or recursion at high level that handles
-            // the execution and aggregation of each logical grouping of assertions into the final result. And also correctly collects an array of feedback messages if assertions fail...
-            if(!success)
-            {
-                totalSuccess = false;
-                // an errorOverride is an error that is either syntactic or otherwise indicates 
-                // that the assertion itself is invalid and cannot be evaluated.
-                if(invalidAssertionError == null)
-                {
-                    errors.Add($"Assertion[{index}] failed. {assertion.ErrorMessage}");
-                }
-                else
-                {
-                    errors.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
                 }
             }
+            
+            // mesh current result with previously aggregated results.
+            result.Passed = comparisonFunc(result.Passed, currentResult.Passed);
+            result.StatusCode = GetWorseStatusCode(currentResult.StatusCode, result.StatusCode);
+            if (currentResult.ErrorMessages.Any())
+            {
+                result.ErrorMessages.AddRange(currentResult.ErrorMessages);
+            }
+
+            if (shortCircuitCondition.HasValue 
+                && result.Passed == shortCircuitCondition)
+            {
+                // pull the parachute!
+                return result;
+            }
+
             index++;
         }
 
-        var response =  new HttpResponseMessage(statusCode);
-        
-        response.Content = Content = CreateJsonContent(JsonConvert.SerializeObject(new
+        return result;
+    }
+
+    private HttpStatusCode GetWorseStatusCode(HttpStatusCode code1, HttpStatusCode code2)
+    {
+        // this is so naive but mostly works for escalating error levels.
+        return (HttpStatusCode)(Math.Max((int)code1, (int)code2));
+    }
+
+    private bool And(bool t1, bool t2) => t1 & t2;
+    private bool Andd(bool t1, bool t2) => t1 && t2;
+    private bool Or(bool t1, bool t2) => t1 | t2;
+    private bool Orr(bool t1, bool t2) => t1 || t2;
+
+    private HttpResponseMessage GetAssertAllResponse(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
+        var payload = JObject.Parse(input.Payload);
+
+        var result = AssertAll(payload, input.Assertion);
+
+        var response = new HttpResponseMessage(result.StatusCode);
+
+        response.Content = CreateJsonContent(JsonConvert.SerializeObject(new
         {
-            new AssertAllResult()
-            {
-                Passed = totalSuccess,
-                ErrorMessages = errors.ToArray(),
-            },
-        };
+            result,
+        }));
+
+        return response;
     }
 
     #region Object Models
-    public class AssertAllPayload()
+    public class AssertAllPayload
     {
+        // This parameter must actually factually come in as a string in the request body or the parsing will fail
+        // There must be a slicker way that we could allows this to be a class based parameter in the request body,
+        // but haven't figured it out yet.
         public string Payload { get; set; }
-        public Assertion[] Assertions { get; set; }
+        public Assertion Assertion { get; set; }
     }
 
     /// <summary>
     /// Valid Assertion Operators:
     /// "Equals" - compares properties in payload as specified by the Left/RightExpression.
-    /// "Is"  - compares property in payload as specified by LeftExpression and compares to literal specified in RightExpression. The only supported keyword currently is "null".
+    /// "Is"  - compares property in payload as specified by LeftExpression and compares to literal specified in RightExpression. The only supported keyword currently is "null" or "empty".
     /// "IsType" - compares the type of the property in payload as specified by LeftExpression and compares to type literal specified in RightExpression. The only supported keywords are "bool", "string", "int", "object" and "array".
     /// </summary>
-    public class Assertion()
+    public class Assertion
     {
         // Valid Values ["OR", "ORR", "AND", "ANDD"]
         // how to chain together the results of each individual Assertion in the Assertions array.
-        public string LogicalOperator { get ; set; }
+        public string LogicalOperator { get; set; }
         public Assertion[] Assertions { get; set; }
 
 
         // Really if the top two properties are not null, then these bottom properties should not be filled in.
         public string LeftExpression { get; set; }
         public string RightExpression { get; set; }
-        public string Operator { get ;set; }
+        public string Operator { get; set; }
         public string ErrorMessage { get; set; }
+        public bool Negate { get; set; }
     }
 
-    public class AssertAllResult()
+    public class AssertAllResult
     {
         public bool Passed { get; set; }
-        public string[] ErrorMessages { get; set; }
+        public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
+        public List<string> ErrorMessages { get; set; } = new List<string>();
     }
 
     public class AssertEqualInput
