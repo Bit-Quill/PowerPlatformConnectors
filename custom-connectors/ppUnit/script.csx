@@ -293,12 +293,17 @@ public class Script : ScriptBase
                 && result.Passed == shortCircuitCondition)
             {
                 // pull the parachute!
-                return result;
+                break;
             }
 
             index++;
         }
-
+    
+        // kludgey, but if the net resuilt is a pass then we shouldn't be returning errors.
+        if (result.Passed)
+        {
+            result.ErrorMessages.Clear();
+        }
         return result;
     }
 
