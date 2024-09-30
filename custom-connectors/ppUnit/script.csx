@@ -9,10 +9,7 @@ public class Script : ScriptBase
 
     public Script()
     {
-        OK_RESPONSE = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = CreateJsonContent(JsonConvert.SerializeObject(new { statusCode = 200, statusMessage = "OK" }))
-        };
+        OK_RESPONSE = GetStatusResponse(200, "OK");
     }
 
     public override async Task<HttpResponseMessage> ExecuteAsync()
@@ -26,6 +23,12 @@ public class Script : ScriptBase
                 return GetResultUrl(originalContent);
             case "AssertEqual":
                 return GetAssertEqual(originalContent);
+            case "AssertNotEqual":
+                return GetAssertNotEqual(originalContent);
+            case "AssertTrue":
+                return GetAssertTrue(originalContent);
+            case "AssertFalse":
+                return GetAssertFalse(originalContent);
             case "AssertAll":
                 return GetAssertAllResponse(originalContent);
             default:
@@ -45,11 +48,6 @@ public class Script : ScriptBase
         };
     }
 
-    /// <summary>
-    /// Asserts that the actual value is equal to the expected value.
-    /// </summary>
-    /// <param name="content">The JSON object representing the input parameters for this action</param>
-    /// <returns></returns>
     private HttpResponseMessage GetAssertEqual(string content)
     {
         var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
@@ -61,14 +59,7 @@ public class Script : ScriptBase
 
         if (input.actual == null || input.expected == null || !input.actual.Equals(input.expected))
         {
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = CreateJsonContent(JsonConvert.SerializeObject(new
-                {
-                    statusCode = input.failureCode,
-                    statusMessage = input.failureMessage
-                }))
-            };
+            return GetStatusResponse(input.failureCode, input.failureMessage);
         }
 
         return OK_RESPONSE;
@@ -334,8 +325,8 @@ public class Script : ScriptBase
     {
         var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
 
-        boolean actualNull  = input.actual == null;
-        boolean expectedNull = input.expected == null;
+        bool actualNull = input.actual == null;
+        bool expectedNull = input.expected == null;
 
         if (actualNull ^ expectedNull)
         {
@@ -344,17 +335,46 @@ public class Script : ScriptBase
 
         if ((actualNull && expectedNull) || input.actual.Equals(input.expected))
         {
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = CreateJsonContent(JsonConvert.SerializeObject(new
-                {
-                    statusCode = input.failureCode,
-                    statusMessage = input.failureMessage
-                }))
-            };
+            return GetStatusResponse(input.failureCode, input.failureMessage);
         }
 
         return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetAssertTrue(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
+
+        if (input.actual == null || !input.actual.Equals("true", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetStatusResponse(input.failureCode, input.failureMessage);
+        }
+
+        return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetAssertFalse(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
+
+        if (input.actual == null || !input.actual.Equals("false", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetStatusResponse(input.failureCode, input.failureMessage);
+        }
+
+        return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetStatusResponse(decimal statusCode, string statusMessage)
+    {
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = CreateJsonContent(JsonConvert.SerializeObject(new AssertionStatus
+            {
+                statusCode = statusCode,
+                statusMessage = statusMessage
+            }))
+        };
     }
 
 
@@ -405,6 +425,12 @@ public class Script : ScriptBase
         public string actual { get; set; }
         public decimal failureCode { get; set; }
         public string failureMessage { get; set; }
+    }
+
+    public class AssertionStatus
+    {
+        public decimal statusCode { get; set; }
+        public string statusMessage { get; set; }
     }
 
     public class WorkflowRoot
