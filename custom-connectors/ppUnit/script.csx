@@ -108,7 +108,7 @@ public class Script : ScriptBase
                 break;
             case "AND":
             case "&":
-                shortCircuitCondition = false;
+                shortCircuitCondition = null;
                 result.Passed = true;
                 comparisonFunc = And;
                 break;
@@ -120,7 +120,7 @@ public class Script : ScriptBase
                 break;
             case "OR":
             case "|":
-                shortCircuitCondition = false;
+                shortCircuitCondition = null;
                 result.Passed = false;
                 comparisonFunc = Or;
                 break;
@@ -324,10 +324,7 @@ public class Script : ScriptBase
 
         var response = new HttpResponseMessage(result.StatusCode);
 
-        response.Content = CreateJsonContent(JsonConvert.SerializeObject(new
-        {
-            result,
-        }));
+        response.Content = CreateJsonContent(JsonConvert.SerializeObject(result));
 
         return response;
     }
