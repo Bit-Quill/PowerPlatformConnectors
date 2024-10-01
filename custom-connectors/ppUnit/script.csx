@@ -1,7 +1,5 @@
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using SnowflakeConnectorConsoleApp;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Net;
 using System;
 
@@ -321,9 +319,8 @@ public class Script : ScriptBase
     private HttpResponseMessage GetAssertAllResponse(string content)
     {
         var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
-        var payload = JObject.Parse(input.Payload);
 
-        var result = AssertAll(payload, input.Assertion);
+        var result = AssertAll((JObject)input.Payload, input.Assertion);
 
         var response = new HttpResponseMessage(result.StatusCode);
 
@@ -341,7 +338,7 @@ public class Script : ScriptBase
         // This parameter must actually factually come in as a string in the request body or the parsing will fail
         // There must be a slicker way that we could allows this to be a class based parameter in the request body,
         // but haven't figured it out yet.
-        public string Payload { get; set; }
+        public object Payload { get; set; }
         public Assertion Assertion { get; set; }
     }
 

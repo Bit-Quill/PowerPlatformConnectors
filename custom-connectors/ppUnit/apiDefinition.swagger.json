@@ -16,35 +16,11 @@
   "consumes": ["application/json"],
   "produces": ["application/json"],
   "paths": {
-    "/resulturl": {
+    "/assertall": {
       "post": {
-        "summary": "Get Results Url",
-        "description": "Returns the URL for the result of running a given Flow.",
-        "operationId": "GetResultsUrl",
-        "parameters": [
-          {
-            "$ref": "#/parameters/Workflow"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/ResultsUrl"
-            }
-          },
-          "default": {
-            "description": "Operation Failed."
-          }
-        },
-        "deprecated": false
-      }
-    },
-    "/assertequal": {
-      "post": {
-        "summary": "Assert Equal",
-        "description": "Asserts that two values are equal.",
-        "operationId": "AssertEqual",
+        "summary": "Assert All",
+        "description": "Asserts all conditions are met.",
+        "operationId": "AssertAll",
         "parameters": [
           {
             "name": "body",
@@ -53,34 +29,17 @@
             "schema": {
               "type": "object",
               "properties": {
-                "actual": {
-                  "type": "string",
-                  "description": "The actual value.",
-                  "title": "actual",
-                  "required": true
+                "Payload": {
+                  "type": "object",
+                  "description": "A class with the properties you want to reference in your Assertion parameter. Currently only supports properties nested one level deep.",
+                  "title": "Payload"
                 },
-                "expected": {
-                  "type": "string",
-                  "description": "The expected value.",
-                  "title": "expected",
-                  "required": true
-                },
-                "failureCode": {
-                  "type": "number",
-                  "description": "The code to return if the assertion fails.",
-                  "title": "failureCode",
-                  "default": 500,
-                  "x-ms-visibility": "advanced"
-                },
-                "failureMessage": {
-                  "type": "string",
-                  "description": "The message to return if the assertion fails.",
-                  "title": "failureMessage",
-                  "default": "Assertion failed.",
-                  "x-ms-visibility": "advanced"
+                "Assertion": {
+                  "$ref": "#/definitions/Assertion",
+                  "description": "Definition of an assertion to be made.",
+                  "title": "Assertion"
                 }
-              },
-              "required": ["actual", "expected"]
+              }
             }
           }
         ],
@@ -88,7 +47,22 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Status"
+              "type": "object",
+              "properties": {
+                "Passed": {
+                  "type": "boolean",
+                  "description": "Did the assertion pass all conditions",
+                  "title": "Passed"
+                },
+                "ErrorMessages": {
+                  "type": "array",
+                  "description": "List of all errors encountered.",
+                  "title": "ErrorMessages",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           },
           "default": {
@@ -122,6 +96,48 @@
           "type": "string",
           "description": "The message to return.",
           "title": "statusMessage"
+        }
+      }
+    },
+    "Assertion": {
+      "type": "object",
+      "description": "Definition of an assertion to be made.",
+      "title": "Assertion",
+      "properties": {
+        "LogicalOperator": {
+        },
+        "Assertions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "title": "Assertions",
+          "description": "List of assertions"
+        },
+        "LeftExpression": {
+          "type": "string",
+          "description": "LeftExpression",
+          "title": "LeftExpression"
+        },
+        "RightExpression": {
+          "type": "string",
+          "description": "",
+          "title": "RightExpression"
+        },
+        "Operator": {
+          "type": "string",
+          "description": "",
+          "title": "Operator"
+        },
+        "ErrorMessage": {
+          "type": "string",
+          "description": "",
+          "title": "ErrorMessage"
+        },
+        "Negate": {
+          "type": "boolean",
+          "description": "Equivalent to using a NOT in front a given assertion.",
+          "title": "Negate"
         }
       }
     }
