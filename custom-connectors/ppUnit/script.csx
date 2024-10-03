@@ -74,16 +74,16 @@ public class Script : ScriptBase
         return OK_RESPONSE;
     }
 
-    private (string, double?) ValidateAndGetComparisonValue(JObject payload, Assertion assertion)
+    private (string, double?) ValidateAndGetComparisonValue(Assertion assertion)
     {
-        if (payload[assertion.LeftExpression].Type == JTokenType.Integer
-            || payload[assertion.LeftExpression].Type == JTokenType.Float)
+        if (assertion.LeftExpression.Type == JTokenType.Integer
+            || assertion.LeftExpression.Type == JTokenType.Float)
         {
             // Using double is kind of a cheat since it can represent all the numeric types (int/float/double). 
             // Hopefully this does not lead to any odd behavior or edge cases due to double floating point rounding errors.
             // Decimal would be more precise in representing both whole numbers and fractions, but then how do you decide on precision of the variable
             // you return from this method if it's an irrational number (neverending decimal)?
-            return (null as string, double.Parse(assertion.RightExpression));
+            return (null as string, assertion.RightExpression.Value<double>());
         }
         else
         {
@@ -91,7 +91,7 @@ public class Script : ScriptBase
         }
     }
 
-    private AssertAllResult AssertAll(JObject payload, Assertion topLevelAssertion)
+    private AssertAllResult AssertAll(Assertion topLevelAssertion)
     {
         var currentResult = new AssertAllResult();
         var result = new AssertAllResult();
@@ -134,7 +134,7 @@ public class Script : ScriptBase
             var invalidAssertionError = null as string;
             if (assertion.LogicalOperator != null)
             {
-                currentResult = AssertAll(payload, assertion);
+                currentResult = AssertAll(assertion);
             }
             else
             {
@@ -144,51 +144,51 @@ public class Script : ScriptBase
                 {
                     case "lessthan":
                     case "<":
-                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
                         if (invalidAssertionError == null)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() < comparisonValue;
+                            currentResult.Passed = assertion.LeftExpression.Value<double>() < comparisonValue;
                         }
                         break;
                     case "lessthanorequalto":
                     case "<=":
-                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
                         if (invalidAssertionError == null)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() <= comparisonValue;
+                            currentResult.Passed = assertion.LeftExpression.Value<double>() <= comparisonValue;
                         }
                         break;
                     case "greaterthan":
                     case ">":
-                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
                         if (invalidAssertionError == null)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() > comparisonValue;
+                            currentResult.Passed = assertion.LeftExpression.Value<double>() > comparisonValue;
                         }
                         break;
                     case "greaterthanorequalto":
                     case ">=":
-                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(payload, assertion);
+                        (invalidAssertionError, comparisonValue) = ValidateAndGetComparisonValue(assertion);
                         if (invalidAssertionError == null)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() >= comparisonValue;
+                            currentResult.Passed = assertion.LeftExpression.Value<double>() >= comparisonValue;
                         }
                         break;
                     case "equalto":
                     case "equals":
                     case "==":
-                        if (payload[assertion.LeftExpression].Type == JTokenType.String)
+                        if (assertion.LeftExpression.Type == JTokenType.String)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<string>() == assertion.RightExpression;
+                            currentResult.Passed = assertion.LeftExpression.Value<string>() == assertion.RightExpression?.Value<string>();
                         }
-                        else if (payload[assertion.LeftExpression].Type == JTokenType.Integer
-                            || payload[assertion.LeftExpression].Type == JTokenType.Float)
+                        else if (assertion.LeftExpression.Type == JTokenType.Integer
+                            || assertion.LeftExpression.Type == JTokenType.Float)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<double>() == double.Parse(assertion.RightExpression);
+                            currentResult.Passed = assertion.LeftExpression.Value<double>() == assertion.RightExpression?.Value<double>();
                         }
-                        else if (payload[assertion.LeftExpression].Type == JTokenType.Boolean)
+                        else if (assertion.LeftExpression.Type == JTokenType.Boolean)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Value<bool>() == bool.Parse(assertion.RightExpression);
+                            currentResult.Passed = assertion.LeftExpression.Value<bool>() == assertion.RightExpression?.Value<bool>();
                         }
                         else
                         {
@@ -196,23 +196,23 @@ public class Script : ScriptBase
                         }
                         break;
                     case "is":
-                        switch (assertion.RightExpression?.ToLower())
+                        switch (assertion.RightExpression?.ToString()?.ToLower())
                         {
                             case "null":
-                                currentResult.Passed = payload[assertion.LeftExpression].Type == JTokenType.Null;
+                                currentResult.Passed = assertion.LeftExpression.Type == JTokenType.Null;
                                 break;
                             case "empty":
-                                currentResult.Passed = (payload[assertion.LeftExpression].Type == JTokenType.Array && !payload[assertion.LeftExpression].Any())
-                                || (payload[assertion.LeftExpression].Type == JTokenType.String && !payload[assertion.LeftExpression].ToString().Any());
+                                currentResult.Passed = (assertion.LeftExpression.Type == JTokenType.Array && !((JArray)assertion.LeftExpression).Any())
+                                || (assertion.LeftExpression.Type == JTokenType.String && !assertion.LeftExpression.ToString().Any());
                                 break;
                             default:
-                                invalidAssertionError = $"The Is operator only supports the keyword \"null\" as the RightExpression";
+                                invalidAssertionError = $"The Is operator only supports the keywords [\"null\", \"empty\"] as the RightExpression";
                                 break;
                         }
                         break;
                     case "istype":
                         JTokenType? type = null;
-                        switch (assertion.RightExpression.ToLower())
+                        switch (assertion.RightExpression?.Value<string>()?.ToLower())
                         {
                             case "bool":
                                 type = JTokenType.Boolean;
@@ -242,7 +242,7 @@ public class Script : ScriptBase
 
                         if (type != null)
                         {
-                            currentResult.Passed = payload[assertion.LeftExpression].Type == type;
+                            currentResult.Passed = assertion.LeftExpression.Type == type;
                         }
                         break;
                     default:
@@ -278,7 +278,7 @@ public class Script : ScriptBase
 
                 }
             }
-            
+
             // mesh current result with previously aggregated results.
             result.Passed = comparisonFunc(result.Passed, currentResult.Passed);
             result.StatusCode = GetWorseStatusCode(currentResult.StatusCode, result.StatusCode);
@@ -287,7 +287,7 @@ public class Script : ScriptBase
                 result.ErrorMessages.AddRange(currentResult.ErrorMessages);
             }
 
-            if (shortCircuitCondition.HasValue 
+            if (shortCircuitCondition.HasValue
                 && result.Passed == shortCircuitCondition)
             {
                 // pull the parachute!
@@ -296,7 +296,7 @@ public class Script : ScriptBase
 
             index++;
         }
-    
+
         // kludgey, but if the net resuilt is a pass then we shouldn't be returning errors.
         if (result.Passed)
         {
@@ -320,7 +320,7 @@ public class Script : ScriptBase
     {
         var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
 
-        var result = AssertAll((JObject)input.Payload, input.Assertion);
+        var result = AssertAll(input.Assertion);
 
         var response = new HttpResponseMessage(result.StatusCode);
 
@@ -332,10 +332,6 @@ public class Script : ScriptBase
     #region Object Models
     public class AssertAllPayload
     {
-        // This parameter must actually factually come in as a string in the request body or the parsing will fail
-        // There must be a slicker way that we could allows this to be a class based parameter in the request body,
-        // but haven't figured it out yet.
-        public object Payload { get; set; }
         public Assertion Assertion { get; set; }
     }
 
@@ -354,8 +350,8 @@ public class Script : ScriptBase
 
 
         // Really if the top two properties are not null, then these bottom properties should not be filled in.
-        public string LeftExpression { get; set; }
-        public string RightExpression { get; set; }
+        public JToken LeftExpression { get; set; }
+        public JToken RightExpression { get; set; }
         public string Operator { get; set; }
         public string ErrorMessage { get; set; }
         public bool Negate { get; set; }

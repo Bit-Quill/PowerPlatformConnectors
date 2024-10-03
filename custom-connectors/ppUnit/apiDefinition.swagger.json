@@ -29,11 +29,6 @@
             "schema": {
               "type": "object",
               "properties": {
-                "Payload": {
-                  "type": "object",
-                  "description": "A class with the properties you want to reference in your Assertion parameter. Currently only supports properties nested one level deep.",
-                  "title": "Payload"
-                },
                 "Assertion": {
                   "$ref": "#/definitions/Assertion",
                   "description": "Definition of an assertion to be made.",
@@ -115,12 +110,12 @@
           "description": "List of assertions"
         },
         "LeftExpression": {
-          "type": "string",
+          "type": "object",
           "description": "LeftExpression",
           "title": "LeftExpression"
         },
         "RightExpression": {
-          "type": "string",
+          "type": "object",
           "description": "",
           "title": "RightExpression"
         },
