@@ -87,7 +87,7 @@ public class Script : ScriptBase
         }
         else
         {
-            return ($"Numeric comparison operators require LeftExpression to refer to a property in the payload of numeric type and RightExpression must be a string that represents a numeric type.", null as double?);
+            return ($"Numeric comparison operators require LeftExpression and RightExpression to both be numeric", null as double?);
         }
     }
 
@@ -125,7 +125,11 @@ public class Script : ScriptBase
                 comparisonFunc = Or;
                 break;
             default:
-                throw new NotImplementedException("Need to handle this error as invalid LogicalOperator.");
+                result.Passed = false;
+                result.ErrorMessages = "Invalid LogicalOperator. The valid values are ['AND', 'ANDD', 'OR', 'ORR']";
+                result.StatusCode = HttpStatus.BadRequest;
+
+                return result;
         };
 
         var index = 0;
@@ -255,7 +259,6 @@ public class Script : ScriptBase
                     currentResult.Passed = !currentResult.Passed;
                 }
 
-
                 // this type of error overrides any sort of assertion result b/c it denotes that one of the assertions is invalid.
                 if (invalidAssertionError != null)
                 {
@@ -275,7 +278,6 @@ public class Script : ScriptBase
                     {
                         currentResult.ErrorMessages.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
                     }
-
                 }
             }
 
@@ -290,14 +292,14 @@ public class Script : ScriptBase
             if (shortCircuitCondition.HasValue
                 && result.Passed == shortCircuitCondition)
             {
-                // pull the parachute!
+                // pull the parachute, we're out!
                 break;
             }
 
             index++;
         }
 
-        // kludgey, but if the net resuilt is a pass then we shouldn't be returning errors.
+        // kludgey, but if the net result is a pass then we shouldn't be returning errors.
         if (result.Passed)
         {
             result.ErrorMessages.Clear();
@@ -343,13 +345,12 @@ public class Script : ScriptBase
     /// </summary>
     public class Assertion
     {
-        // Valid Values ["OR", "ORR", "AND", "ANDD"]
-        // how to chain together the results of each individual Assertion in the Assertions array.
+        // the logical operator with which to chain the output of each assertion within the Assertions array.
         public string LogicalOperator { get; set; }
         public Assertion[] Assertions { get; set; }
 
-
-        // Really if the top two properties are not null, then these bottom properties should not be filled in.
+        // If the top two properties are not null, then these bottom properties should not be filled in.
+        // Perhaps a tad clunky, but necessary b/c this is a recursive type definition.
         public JToken LeftExpression { get; set; }
         public JToken RightExpression { get; set; }
         public string Operator { get; set; }
