@@ -126,8 +126,8 @@ public class Script : ScriptBase
                 break;
             default:
                 result.Passed = false;
-                result.ErrorMessages = "Invalid LogicalOperator. The valid values are ['AND', 'ANDD', 'OR', 'ORR']";
-                result.StatusCode = HttpStatus.BadRequest;
+                result.ErrorMessages.Add("Invalid LogicalOperator. The valid values are ['AND', 'ANDD', 'OR', 'ORR']");
+                result.StatusCode = HttpStatusCode.BadRequest;
 
                 return result;
         };
