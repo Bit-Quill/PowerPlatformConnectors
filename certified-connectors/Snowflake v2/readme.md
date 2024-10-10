@@ -68,6 +68,27 @@ CREATE SECURITY INTEGRATION <integration name>
        - Resource URL: Application ID URI from registered resource app in Azure.
 3. Click on Sign in button and provider user credentials.
 
+## Automatic Type Conversion
+- One of the core functions of this connector is that it converts the native snowflake response format, which is a two dimensional array of string, to an array of typed class. This allows the data to be readily consumed by power platform.
+- Automatically converted types
+       - fixed
+	- float
+	- boolean
+	- array
+	- object
+- Passthrough types (will be represented as a string the way it is returned raw from the Snowflake API)
+       - geological
+       - vector
+       - date
+       - datetime
+       - timestamp_ltz
+       - timestamp_ntz
+       - timestamp_tz
+       - string
+- Notes:
+       - There are some known quirks with the various date/time related types. Please know that date/time columns are returned as passthrough values and reflect the exact value as returned from the snowflake API.
+              - Example: If the nullable api parameter is true, none of the expected date/time formatting occurs. If false, the formatting works as expected with some exceptions. If you notice date/time types coming back as integers or decimals, please refer to the snowflake documenation on data type format settings.
+
 ## Known Issues and Limitations
 
 1. If you get a 500 response when creating a new connection, that is a transient error. Please wait a few minutes and try again.
