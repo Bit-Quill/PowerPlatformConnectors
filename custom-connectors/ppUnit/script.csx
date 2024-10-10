@@ -21,6 +21,8 @@ public class Script : ScriptBase
         {
             case "GetResultsUrl":
                 return GetResultUrl(originalContent);
+            case "AssertAll":
+                return GetAssertAllResponse(originalContent);
             case "AssertEqual":
                 return GetAssertEqual(originalContent);
             case "AssertNotEqual":
@@ -29,8 +31,6 @@ public class Script : ScriptBase
                 return GetAssertTrue(originalContent);
             case "AssertFalse":
                 return GetAssertFalse(originalContent);
-            case "AssertAll":
-                return GetAssertAllResponse(originalContent);
             default:
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
@@ -48,6 +48,19 @@ public class Script : ScriptBase
         };
     }
 
+    private HttpResponseMessage GetAssertAllResponse(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
+
+        var result = AssertAll(input.Assertion);
+
+        var response = new HttpResponseMessage(result.StatusCode);
+
+        response.Content = CreateJsonContent(JsonConvert.SerializeObject(result));
+
+        return response;
+    }
+
     private HttpResponseMessage GetAssertEqual(string content)
     {
         var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
@@ -63,6 +76,62 @@ public class Script : ScriptBase
         }
 
         return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetAssertNotEqual(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
+
+        bool actualNull = input.actual == null;
+        bool expectedNull = input.expected == null;
+
+        if (actualNull ^ expectedNull)
+        {
+            return OK_RESPONSE;
+        }
+
+        if ((actualNull && expectedNull) || input.actual.Equals(input.expected))
+        {
+            return GetStatusResponse(input.failureCode, input.failureMessage);
+        }
+
+        return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetAssertTrue(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
+
+        if (input.actual == null || !input.actual.Equals("true", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetStatusResponse(input.failureCode, input.failureMessage);
+        }
+
+        return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetAssertFalse(string content)
+    {
+        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
+
+        if (input.actual == null || !input.actual.Equals("false", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetStatusResponse(input.failureCode, input.failureMessage);
+        }
+
+        return OK_RESPONSE;
+    }
+
+    private HttpResponseMessage GetStatusResponse(decimal statusCode, string statusMessage)
+    {
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = CreateJsonContent(JsonConvert.SerializeObject(new AssertionStatus
+            {
+                statusCode = statusCode,
+                statusMessage = statusMessage
+            }))
+        };
     }
 
     private (string, double?) ValidateAndGetComparisonValue(Assertion assertion)
@@ -308,75 +377,6 @@ public class Script : ScriptBase
     private bool Andd(bool t1, bool t2) => t1 && t2;
     private bool Or(bool t1, bool t2) => t1 | t2;
     private bool Orr(bool t1, bool t2) => t1 || t2;
-
-    private HttpResponseMessage GetAssertAllResponse(string content)
-    {
-        var input = JsonConvert.DeserializeObject<AssertAllPayload>(content);
-
-        var result = AssertAll(input.Assertion);
-
-        var response = new HttpResponseMessage(result.StatusCode);
-
-        response.Content = CreateJsonContent(JsonConvert.SerializeObject(result));
-
-        return response;
-    }
-    private HttpResponseMessage GetAssertNotEqual(string content)
-    {
-        var input = JsonConvert.DeserializeObject<AssertEqualityInput>(content);
-
-        bool actualNull = input.actual == null;
-        bool expectedNull = input.expected == null;
-
-        if (actualNull ^ expectedNull)
-        {
-            return OK_RESPONSE;
-        }
-
-        if ((actualNull && expectedNull) || input.actual.Equals(input.expected))
-        {
-            return GetStatusResponse(input.failureCode, input.failureMessage);
-        }
-
-        return OK_RESPONSE;
-    }
-
-    private HttpResponseMessage GetAssertTrue(string content)
-    {
-        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
-
-        if (input.actual == null || !input.actual.Equals("true", StringComparison.OrdinalIgnoreCase))
-        {
-            return GetStatusResponse(input.failureCode, input.failureMessage);
-        }
-
-        return OK_RESPONSE;
-    }
-
-    private HttpResponseMessage GetAssertFalse(string content)
-    {
-        var input = JsonConvert.DeserializeObject<AssertBooleanInput>(content);
-
-        if (input.actual == null || !input.actual.Equals("false", StringComparison.OrdinalIgnoreCase))
-        {
-            return GetStatusResponse(input.failureCode, input.failureMessage);
-        }
-
-        return OK_RESPONSE;
-    }
-
-    private HttpResponseMessage GetStatusResponse(decimal statusCode, string statusMessage)
-    {
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = CreateJsonContent(JsonConvert.SerializeObject(new AssertionStatus
-            {
-                statusCode = statusCode,
-                statusMessage = statusMessage
-            }))
-        };
-    }
-
 
     #region Object Models
     public class AssertAllPayload

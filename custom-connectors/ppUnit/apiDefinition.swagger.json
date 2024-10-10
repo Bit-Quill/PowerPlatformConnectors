@@ -7,7 +7,7 @@
     "contact": {
       "name": "Improving",
       "url": "https://improving.com",
-      "email": "joe.brinkman@improving.com;tobin.chee@improving.com"
+      "email": "joe.brinkman@improving.com"
     }
   },
   "host": "api.ppunit.com",
@@ -90,7 +90,7 @@
         },
         "deprecated": false
       }
-    }
+    },
     "/assertequal": {
       "post": {
         "summary": "Assert Equal",
@@ -219,8 +219,7 @@
       "description": "Definition of an assertion to be made.",
       "title": "Assertion",
       "properties": {
-        "LogicalOperator": {
-        },
+        "LogicalOperator": {},
         "Assertions": {
           "type": "array",
           "items": {
