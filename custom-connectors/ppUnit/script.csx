@@ -54,11 +54,7 @@ public class Script : ScriptBase
 
         var result = AssertAll(input.Assertion);
 
-        var response = new HttpResponseMessage(result.StatusCode);
-
-        response.Content = CreateJsonContent(JsonConvert.SerializeObject(result));
-
-        return response;
+        return GetStatusResponse((int)result.StatusCode, result.ErrorMessages);
     }
 
     private HttpResponseMessage GetAssertEqual(string content)
@@ -122,14 +118,32 @@ public class Script : ScriptBase
         return OK_RESPONSE;
     }
 
-    private HttpResponseMessage GetStatusResponse(decimal statusCode, string statusMessage)
+    private HttpResponseMessage GetStatusResponse(int statusCode, string message)
     {
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = CreateJsonContent(JsonConvert.SerializeObject(new AssertionStatus
             {
                 statusCode = statusCode,
-                statusMessage = statusMessage
+                statusMessage = message
+            }))
+        };
+    }
+
+    private HttpResponseMessage GetStatusResponse(int statusCode, List<string> messages)
+    {
+        var message = string.Join(Environment.NewLine, messages);
+        if (statusCode == 200 && string.IsNullOrWhiteSpace(message))
+        {
+            return OK_RESPONSE;
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = CreateJsonContent(JsonConvert.SerializeObject(new AssertionStatus
+            {
+                statusCode = statusCode,
+                statusMessage = message
             }))
         };
     }
@@ -333,10 +347,12 @@ public class Script : ScriptBase
                     if (invalidAssertionError == null)
                     {
                         currentResult.ErrorMessages.Add($"Assertion[{index}] failed. {assertion.ErrorMessage}");
+                        currentResult.StatusCode = HttpStatusCode.ExpectationFailed;
                     }
                     else
                     {
                         currentResult.ErrorMessages.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
+
                     }
                 }
             }
@@ -416,20 +432,20 @@ public class Script : ScriptBase
     {
         public string actual { get; set; }
         public string expected { get; set; }
-        public decimal failureCode { get; set; }
+        public int failureCode { get; set; }
         public string failureMessage { get; set; }
     }
 
     public class AssertBooleanInput
     {
         public string actual { get; set; }
-        public decimal failureCode { get; set; }
+        public int failureCode { get; set; }
         public string failureMessage { get; set; }
     }
 
     public class AssertionStatus
     {
-        public decimal statusCode { get; set; }
+        public int statusCode { get; set; }
         public string statusMessage { get; set; }
     }
 

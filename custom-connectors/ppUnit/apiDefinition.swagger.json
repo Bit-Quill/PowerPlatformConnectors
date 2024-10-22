@@ -66,22 +66,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
-              "properties": {
-                "Passed": {
-                  "type": "boolean",
-                  "description": "Did the assertion pass all conditions",
-                  "title": "Passed"
-                },
-                "ErrorMessages": {
-                  "type": "array",
-                  "description": "List of all errors encountered.",
-                  "title": "ErrorMessages",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
+              "$ref": "#/definitions/Status"
             }
           },
           "default": {
@@ -203,9 +188,9 @@
       "type": "object",
       "properties": {
         "statusCode": {
-          "type": "number",
+          "type": "integer",
           "description": "The result of the assertion.",
-          "title": "result"
+          "title": "statusCode"
         },
         "statusMessage": {
           "type": "string",
@@ -289,10 +274,10 @@
             "title": "expected"
           },
           "failureCode": {
-            "type": "number",
+            "type": "integer",
             "description": "The code to return if the assertion fails.",
             "title": "failureCode",
-            "default": 400,
+            "default": 417,
             "x-ms-visibility": "advanced"
           },
           "failureMessage": {
@@ -318,7 +303,7 @@
             "title": "actual"
           },
           "failureCode": {
-            "type": "number",
+            "type": "integer",
             "description": "The code to return if the assertion fails.",
             "title": "failureCode",
             "default": 400,

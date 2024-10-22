@@ -155,3 +155,8 @@ All assertions will return an status code and a status message for all pass or f
 * `Assert True`: Asserts that a given condition is true.
 
 * `Assert False`: Asserts that a given condition is false.
+
+## Contributors
+
+* Joe Brinkman <joe.brinkman@improving.com>
+* Tobin Chee <tobin.chee@improving.com>
