@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Net;
 using System;
+using System.Text.RegularExpressions;
 
 public class Script : ScriptBase
 {
@@ -322,6 +323,10 @@ public class Script : ScriptBase
                         {
                             currentResult.Passed = assertion.LeftExpression.Type == type;
                         }
+                        break;
+                    case "regex":
+                    case "ismatch":
+                        currentResult.Passed = Regex.IsMatch(assertion.LeftExpression, assertion.RightExpression);
                         break;
                     default:
                         invalidAssertionError = $"The Operator \"{assertion.Operator}\" is not supported";
