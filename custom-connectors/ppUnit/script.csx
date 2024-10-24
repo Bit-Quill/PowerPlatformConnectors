@@ -168,7 +168,6 @@ public class Script : ScriptBase
 
     private AssertAllResult AssertAll(Assertion topLevelAssertion)
     {
-        var currentResult = new AssertAllResult();
         var result = new AssertAllResult();
 
         var shortCircuitCondition = null as bool?;
@@ -210,6 +209,7 @@ public class Script : ScriptBase
         var index = 0;
         foreach (var assertion in topLevelAssertion.Assertions)
         {
+            var currentResult = new AssertAllResult();
             var invalidAssertionError = null as string;
             if (assertion.LogicalOperator != null)
             {
@@ -357,7 +357,6 @@ public class Script : ScriptBase
                     else
                     {
                         currentResult.ErrorMessages.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
-
                     }
                 }
             }
