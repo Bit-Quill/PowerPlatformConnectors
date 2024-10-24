@@ -326,7 +326,7 @@ public class Script : ScriptBase
                         break;
                     case "regex":
                     case "ismatch":
-                        currentResult.Passed = Regex.IsMatch(assertion.LeftExpression, assertion.RightExpression);
+                        currentResult.Passed = Regex.IsMatch(assertion.LeftExpression.ToString(), assertion.RightExpression.ToString());
                         break;
                     default:
                         invalidAssertionError = $"The Operator \"{assertion.Operator}\" is not supported";
