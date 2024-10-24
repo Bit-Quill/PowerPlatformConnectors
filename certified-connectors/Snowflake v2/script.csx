@@ -314,16 +314,8 @@ public class Script : ScriptBase
                                 newRow.Add(new JProperty(name.ToString(), JArray.Parse(row[i].ToString())));
                                 break;
                             default:
-                                if (type.ToString().IndexOf(Snowflake_Type_Time) >= 0)
-                                {
-                                    var utcTime = ConvertToUTC(row[i].ToString());
-                                    newRow.Add(new JProperty(name.ToString(), utcTime));
-                                }
-                                else
-                                {
-                                    var val = row[i];
-                                    newRow.Add(new JProperty(name.ToString(), val));
-                                }
+                                // every other type gets passed thru directly as a string.
+                                newRow.Add(new JProperty(name.ToString(), row[i]));
                                 break;
                         }
                     }
