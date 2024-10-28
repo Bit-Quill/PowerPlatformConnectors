@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Net;
 using System;
+using System.Text.RegularExpressions;
 
 public class Script : ScriptBase
 {
@@ -167,7 +168,6 @@ public class Script : ScriptBase
 
     private AssertAllResult AssertAll(Assertion topLevelAssertion)
     {
-        var currentResult = new AssertAllResult();
         var result = new AssertAllResult();
 
         var shortCircuitCondition = null as bool?;
@@ -209,6 +209,7 @@ public class Script : ScriptBase
         var index = 0;
         foreach (var assertion in topLevelAssertion.Assertions)
         {
+            var currentResult = new AssertAllResult();
             var invalidAssertionError = null as string;
             if (assertion.LogicalOperator != null)
             {
@@ -323,6 +324,10 @@ public class Script : ScriptBase
                             currentResult.Passed = assertion.LeftExpression.Type == type;
                         }
                         break;
+                    case "regex":
+                    case "ismatch":
+                        currentResult.Passed = Regex.IsMatch(assertion.LeftExpression.ToString(), assertion.RightExpression.ToString());
+                        break;
                     default:
                         invalidAssertionError = $"The Operator \"{assertion.Operator}\" is not supported";
                         break;
@@ -352,7 +357,6 @@ public class Script : ScriptBase
                     else
                     {
                         currentResult.ErrorMessages.Add($"Assertion[{index}] invalid. {invalidAssertionError}");
-
                     }
                 }
             }
